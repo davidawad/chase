@@ -11,6 +11,16 @@ import json
 #     print(g[0][0], g[0][1])
 
 
+SEARCH_ENDPOINT = "search"
+STATE = "new-jersey"
+YEAR = "2015"
+
+LEGAL_DATA_FILENAME = 'state_data/' + STATE + '_' + YEAR + '.json'
+
+# cache our data file locally so that we only load it once
+LEGAL_DATA = None
+
+
 # function to return legal data object
 def fetch_data():
     """
@@ -37,7 +47,7 @@ def search_keyword(keyword):
     """
     if not keyword:
         return ''
-    ret = _search_nested_dict(keyword)
+    ret = _search_nested_dict(keyword, fetch_data())
     return ret
 
 
@@ -53,7 +63,8 @@ def _search_nested_dict(keyword, data=LEGAL_DATA, final_list=None):
 
     # data is null or empty, no reason
     if data is None:
-        raise ValueError('Search provided with empty json, is the state data being loaded properly?')
+        raise ValueError('Search provided with no data, \
+                         is the state data being loaded properly?')
 
     # val is a dict
     if isinstance(data, dict):
@@ -69,7 +80,11 @@ def _search_nested_dict(keyword, data=LEGAL_DATA, final_list=None):
                 if keyword in s:
                     # find the title tag of our leaf node
                     # a key such as "section" or "title", etc.
-                    obj_title = [x for x in data.keys() if x not in ['link', 'raws']][0]
+                    unique_keys = [x for x in data.keys() if x not in ['link', 'raws']]
+
+                    # the object title is going to be the tag that isn't link
+                    # or raws
+                    obj_title = unique_keys[0]
 
                     # title like the following :
                     # 'Section 1:1-1 - General rules of construction'
@@ -95,11 +110,6 @@ def _search_nested_dict(keyword, data=LEGAL_DATA, final_list=None):
         for index, val in enumerate(data):
             _search_nested_dict(keyword, data[index], final_list)
 
-    else:
-        # the current object is niether a list or a dict,
-        # the value is probably a temp key or a link we don't care about
-        return
-
     return final_list
 
 
@@ -113,14 +123,4 @@ def clean_legal_text(uncleaned_text):
     return ret
 
 
-SEARCH_ENDPOINT = "search"
-STATE = "new-jersey"
-YEAR = "2015"
 
-LEGAL_DATA_FILENAME = 'state_data/' + STATE + '_' + YEAR + '.json'
-
-LEGAL_DATA = None
-
-# cache our data file locally so that we only load it once
-if not LEGAL_DATA:
-    LEGAL_DATA = fetch_data()
